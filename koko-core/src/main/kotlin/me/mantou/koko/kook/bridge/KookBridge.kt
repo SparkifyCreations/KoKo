@@ -4,4 +4,5 @@ import me.mantou.koko.KoKoBot
 
 interface KookBridge {
     suspend fun init(koKoBot: KoKoBot)
+    suspend fun destroy()
 }
