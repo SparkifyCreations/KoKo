@@ -1,16 +1,22 @@
 package me.mantou.koko
 
-import kotlinx.coroutines.runBlocking
-import me.mantou.koko.kook.bridge.KookBridge
 import me.mantou.koko.kook.KookAPIService
+import me.mantou.koko.kook.bridge.KookBridge
+import me.mantou.koko.kook.bridge.ws.KookWebSocketBridge
 
 class KoKoBot(
-    botToken: String,
-    private val connector: KookBridge
+    block: KoKoConfig.() -> Unit = {}
 ) {
-    val apiService = KookAPIService("https://www.kookapp.cn/api/", "v3", botToken)
+    private val config: KoKoConfig = KoKoConfig().apply(block)
+
+    val apiService = KookAPIService("https://www.kookapp.cn/api/", "v3", config.botToken)
 
     suspend fun start(){
-        connector.init(this@KoKoBot)
+        config.bridge.init(this@KoKoBot)
     }
+}
+
+class KoKoConfig{
+    var botToken: String = ""
+    var bridge: KookBridge = KookWebSocketBridge()
 }

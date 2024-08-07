@@ -1,9 +1,6 @@
 package me.mantou.koko.kook.model.signal
 
-import com.fasterxml.jackson.annotation.JsonCreator
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.annotation.JsonValue
+import com.fasterxml.jackson.annotation.*
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class Signal(
@@ -22,7 +19,10 @@ enum class SignalType(
     EVENT(0, SignalBound.CLIENT_BOUND),
     HELLO(1, SignalBound.CLIENT_BOUND),
     PING(2, SignalBound.SERVER_BOUND),
-    PONG(3, SignalBound.CLIENT_BOUND);
+    PONG(3, SignalBound.CLIENT_BOUND),
+    RESUME(4, SignalBound.SERVER_BOUND),
+    RECONNECT(5, SignalBound.CLIENT_BOUND),
+    RESUME_ACK(6, SignalBound.CLIENT_BOUND);
 
     companion object {
         @JsonCreator
@@ -31,6 +31,13 @@ enum class SignalType(
         }
     }
 }
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class HelloPayload(
+    val code: Int,
+    @JsonProperty("session_id")
+    val sessionId: String
+)
 
 enum class SignalBound {
     CLIENT_BOUND,

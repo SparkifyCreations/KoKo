@@ -1,7 +1,6 @@
 package me.mantou.koko
 
 import kotlinx.coroutines.runBlocking
-import me.mantou.koko.kook.bridge.KookWebSocketBridge
 import java.io.FileReader
 import java.util.Properties
 import kotlin.test.Test
@@ -12,7 +11,9 @@ class KoKoBotTest {
     fun test() {
         val properties = Properties()
         properties.load(FileReader("E:\\Personal\\IdeaProjects\\Sparkify\\KoKo\\bot.properties"))
-        val bot = KoKoBot(properties.getProperty("token"), KookWebSocketBridge())
+        val bot = KoKoBot{
+            botToken = properties.getProperty("token")
+        }
         runBlocking {
             bot.start()
         }

@@ -1,8 +1,6 @@
 package me.mantou.koko
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.convertValue
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import me.mantou.koko.kook.model.signal.Signal
@@ -23,13 +21,20 @@ class SignalSerializationTest {
 
         assertEquals("{\"s\":2,\"sn\":1}", mapper.writeValueAsString(signal))
 
-        val signalStr = "{\"s\":\"1\",\"d\":{\"k1\":\"v1\"}}"
+        val signalStr = "{\"s\":\"1\",\"d\":{\"k1\":\"v1\",\"k_2\":\"v_2\"}}"
         val signalFromStr = mapper.readValue(signalStr, Signal::class.java)
         assertEquals(
-            Signal(SignalType.HELLO, payload = mapOf("k1" to "v1")),
+            Signal(SignalType.HELLO, payload = mapOf("k1" to "v1", "k_2" to "v_2")),
             signalFromStr
         )
 
-        assert(signalFromStr.payload is LinkedHashMap<*, *>)
+        val value = mapper.convertValue(signalFromStr.payload, KModel::class.java)
+        println(value)
     }
+
+    data class KModel(
+        val k1: String,
+        @JsonProperty("k_2")
+        val k2: String
+    )
 }
