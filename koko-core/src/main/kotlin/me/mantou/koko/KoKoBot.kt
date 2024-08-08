@@ -9,10 +9,15 @@ class KoKoBot(
 ) {
     private val config: KoKoConfig = KoKoConfig().apply(block)
 
+
     val apiService = KookAPIService("https://www.kookapp.cn/api/", "v3", config.botToken)
 
     suspend fun start(){
-        config.bridge.init(this@KoKoBot)
+        config.bridge.init(this@KoKoBot).join()
+    }
+
+    fun stop(){
+        config.bridge.destroy()
     }
 }
 

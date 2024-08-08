@@ -11,8 +11,9 @@ import kotlin.test.assertEquals
 class SignalSerializationTest {
 
     private val mapper = jacksonObjectMapper()
-    companion object{
-        private val LOGGER = KotlinLogging.logger {  }
+
+    companion object {
+        private val LOGGER = KotlinLogging.logger { }
     }
 
     @Test
@@ -29,7 +30,7 @@ class SignalSerializationTest {
         )
 
         val value = mapper.convertValue(signalFromStr.payload, KModel::class.java)
-        println(value)
+        LOGGER.info { value }
     }
 
     data class KModel(

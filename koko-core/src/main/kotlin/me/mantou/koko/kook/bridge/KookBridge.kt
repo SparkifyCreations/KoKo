@@ -1,8 +1,9 @@
 package me.mantou.koko.kook.bridge
 
+import kotlinx.coroutines.Job
 import me.mantou.koko.KoKoBot
 
 interface KookBridge {
-    suspend fun init(koKoBot: KoKoBot)
-    suspend fun destroy()
+    fun init(koKoBot: KoKoBot): Job
+    fun destroy()
 }

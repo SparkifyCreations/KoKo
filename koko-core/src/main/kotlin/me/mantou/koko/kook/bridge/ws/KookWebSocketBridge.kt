@@ -26,65 +26,76 @@ class KookWebSocketBridge : KookBridge {
     }
 
     private val mapper = jacksonObjectMapper()
+    private val scope = CoroutineScope(Dispatchers.IO)
     private lateinit var koKoBot: KoKoBot
-    private var scope = CoroutineScope(Dispatchers.IO)
 
     private var sn: Int = 0
 
-    override suspend fun init(koKoBot: KoKoBot) {
+    override fun init(koKoBot: KoKoBot): Job {
         this.koKoBot = koKoBot
-        var url = getWebSocketUrl()
-
-        while (true) {
-            try {
-                httpClient.webSocket(url) {
+        return scope.launch {
+            var websocketUrl = getWebSocketUrl()
+            while (this.isActive) {
+                //开启连接
+                httpClient.webSocket(websocketUrl) {
+                    var nextPingTime = 0L
+                    var lastPingTime = 0L
+                    var needPong = false
+                    val startTime = System.currentTimeMillis()
                     var sessionId: String? = null
-                    val startTimestamp = System.currentTimeMillis()
-                    var nextPingDelay = 0
-                    var lastPongTimestamp = 0L
+
                     var repingCount = 0
+                    //维护ping
+                    launch {
+                        var inReping = false
 
-                    //处理ping pong和初始连接
-                    val lifecycleJob = launch {
-                        var lastPingTimestamp = 0L
-
-                        while (isActive) {
-                            //如果握手包(HELLO)超过6秒未收到
+                        while (this@webSocket.isActive) {
+                            //如果超过6s仍未收到HELLO信号
                             if (sessionId == null) {
-                                if (System.currentTimeMillis() - startTimestamp < 1000 * 6) continue
-                                LOGGER.info { "等待握手包[HELLO]超时..." }
-                                this@launch.cancel()
+                                if (System.currentTimeMillis() - startTime < 1000 * 6) continue
+                                LOGGER.info { "[HELLO] 连接成功后在6s内未收到HELLO信号，重新连接" }
                                 this@webSocket.cancel()
-                            }
-                            //如果距离上次ping超过6秒且没有收到pong
-                            if (lastPongTimestamp - lastPingTimestamp > 1000 * 6) {
-                                //如果重新ping也没有收到pong，则断开连接
-                                if (repingCount < 2) {
-                                    nextPingDelay = 2 * ++repingCount
-                                    continue
-                                }
-                                LOGGER.info { "[HELLO]连接超时..." }
-                                //TODO resume
-                                this@launch.cancel()
-                                this@webSocket.cancel()
-                            } else {
-                                //重置超时中重连计数
-                                repingCount = 0
-                                //重置下次ping的时间
-                                nextPingDelay = 30
+                                break
                             }
 
-                            //如果应该开始ping了
-                            if (System.currentTimeMillis() - lastPingTimestamp > 1000 * nextPingDelay) {
+                            //进行ping操作
+                            if (System.currentTimeMillis() > nextPingTime) {
+                                //发送ping包
                                 send(mapper.writeValueAsString(Signal(SignalType.PING, sn = sn)))
-                                lastPingTimestamp = System.currentTimeMillis()
-                                LOGGER.info { "发送[PING]" }
+
+                                LOGGER.info { "${takeIf { repingCount != 0 }?.let { "[超时中] " } ?: ""}发送[PING]" }
+
+                                //设置下次ping的时间
+                                nextPingTime = System.currentTimeMillis() + 1000 * 30
+                                lastPingTime = System.currentTimeMillis()
+                                //设置需要接收pong
+                                needPong = true
+                                inReping = false
+                            }
+
+                            if (inReping) continue
+                            //如果不需要接收pong
+                            if (!needPong) continue
+                            //如果当前时间超过预期收到pong的时间
+                            if (System.currentTimeMillis() - lastPingTime > 1000 * 6) {
+                                //尝试再次ping两次，如果仍然失败，则重新连接
+                                if (repingCount < 2) {
+                                    //修改下次ping的时间
+                                    nextPingTime = System.currentTimeMillis() + 1000 * 2 * ++repingCount
+                                    inReping = true
+                                    LOGGER.info { "超时中, 第 $repingCount 次尝试" }
+                                }else{
+                                    LOGGER.info { "已超时, 尝试重新连接" }
+                                    //TODO resume
+                                    this@webSocket.cancel()
+                                    break
+                                }
                             }
                         }
                     }
 
-                    LOGGER.info { "开始连接" }
-                    while (isActive) {
+                    //处理信号
+                    while (true){
                         val frame = incoming.receive() as Frame.Binary
                         val signal = mapper.readValue(frame.data.zlibDecompress(), Signal::class.java)
 
@@ -94,28 +105,30 @@ class KookWebSocketBridge : KookBridge {
                                 if (payload.code != 0) throw RuntimeException("握手包(HELLO)异常, code: ${payload.code}")
 
                                 sessionId = payload.sessionId
-                                LOGGER.info { "握手成功, sessionId: $sessionId" }
+                                LOGGER.info { "收到[HELLO], 握手成功 sessionId: $sessionId" }
                             }
+
                             SignalType.PONG -> {
-                                lastPongTimestamp = System.currentTimeMillis()
+                                repingCount = 0
+                                needPong = false
                                 LOGGER.info { "收到[PONG]" }
                             }
+
                             SignalType.RECONNECT -> {
-                                lifecycleJob.cancel()
                                 this@webSocket.cancel()
                                 LOGGER.info { "收到[RECONNECT]" }
                             }
+
                             else -> {}
                         }
                     }
                 }
-            }catch (e: Exception){
-                LOGGER.info { "遇到异常 ${e.message}, 尝试重新连接" }
             }
         }
     }
 
-    override suspend fun destroy() {
+
+    override fun destroy() {
         scope.cancel()
     }
 
