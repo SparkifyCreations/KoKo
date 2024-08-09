@@ -1,6 +1,7 @@
 package me.mantou.koko.kook.model.signal
 
 import com.fasterxml.jackson.annotation.*
+import com.fasterxml.jackson.databind.JsonNode
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class Signal(
@@ -8,7 +9,8 @@ data class Signal(
     val type: SignalType,
     @JsonProperty("d")
     val payload: Any? = null,
-    val sn: Int? = null
+    val sn: Int? = null,
+    val extra: JsonNode? = null // what is this? "extra":{"verifyToken":"rX_xxx","encryptKey":"","callbackUrl":""}
 )
 
 enum class SignalType(
