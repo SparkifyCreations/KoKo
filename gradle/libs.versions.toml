@@ -6,6 +6,7 @@
 # log
 kotlinLoggingJvm = "7.0.0"
 slf4j = "2.0.13"
+logback = "1.5.6"
 
 # ktor
 ktor = "2.3.12"
@@ -21,6 +22,7 @@ jackson = "2.17.2"
 # log
 kotlinLoggingJVM = { module = "io.github.oshai:kotlin-logging-jvm", version.ref = "kotlinLoggingJvm" }
 slf4jImpl = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 
 # ktor
 ktorClientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }

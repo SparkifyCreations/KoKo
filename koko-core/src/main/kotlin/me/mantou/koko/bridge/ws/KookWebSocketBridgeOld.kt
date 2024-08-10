@@ -1,4 +1,4 @@
-package me.mantou.koko.kook.bridge.ws
+package me.mantou.koko.bridge.ws
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -9,7 +9,7 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import me.mantou.koko.KoKoBot
 import me.mantou.koko.kook.KookAPIEndpoints
-import me.mantou.koko.kook.bridge.KookBridge
+import me.mantou.koko.bridge.KookBridge
 import me.mantou.koko.kook.model.request.GatewayRequest
 import me.mantou.koko.kook.model.signal.HelloPayload
 import me.mantou.koko.kook.model.signal.Signal

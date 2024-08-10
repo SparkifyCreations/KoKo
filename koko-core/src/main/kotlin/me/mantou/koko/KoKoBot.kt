@@ -1,8 +1,8 @@
 package me.mantou.koko
 
 import me.mantou.koko.kook.KookAPIService
-import me.mantou.koko.kook.bridge.KookBridge
-import me.mantou.koko.kook.bridge.ws.KookWebSocketBridge
+import me.mantou.koko.bridge.KookBridge
+import me.mantou.koko.bridge.ws.KookWebSocketBridge
 
 class KoKoBot(
     block: KoKoConfig.() -> Unit = {}

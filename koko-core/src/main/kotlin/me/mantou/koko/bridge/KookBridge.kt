@@ -1,4 +1,4 @@
-package me.mantou.koko.kook.bridge
+package me.mantou.koko.bridge
 
 import kotlinx.coroutines.Job
 import me.mantou.koko.KoKoBot

@@ -28,16 +28,13 @@ enum class SignalType(
 
     companion object {
         @JsonCreator
-        fun fromValue(op: Int): SignalType {
-            return entries.find { it.op == op } ?: throw IllegalArgumentException("Unknown SignalType: $op")
-        }
+        fun fromValue(op: Int): SignalType = entries.find { it.op == op } ?: throw IllegalArgumentException("Unknown SignalType: $op")
     }
 }
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class HelloPayload(
     val code: Int,
-    @JsonProperty("session_id")
     val sessionId: String
 )
 

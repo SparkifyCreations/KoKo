@@ -1,8 +1,16 @@
 package me.mantou.koko.kook.model.request
 
-import me.mantou.koko.kook.Param
-
 data class GatewayRequest(
-    @Param
     val compress: Int = 1
 )
+
+object User{
+    data class ViewRequest(
+        val userId: String,
+        val guildId: String? = null
+    )
+
+    data class GetPersonalPanelRequest(
+        val userId: String
+    )
+}

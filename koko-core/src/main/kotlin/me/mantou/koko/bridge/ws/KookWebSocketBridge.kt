@@ -1,5 +1,6 @@
-package me.mantou.koko.kook.bridge.ws
+package me.mantou.koko.bridge.ws
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategies
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.*
@@ -10,10 +11,11 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import me.mantou.koko.KoKoBot
 import me.mantou.koko.kook.KookAPIEndpoints
-import me.mantou.koko.kook.bridge.KookBridge
+import me.mantou.koko.bridge.KookBridge
 import me.mantou.koko.kook.model.request.GatewayRequest
 import me.mantou.koko.kook.model.signal.HelloPayload
 import me.mantou.koko.kook.model.signal.Signal
+import me.mantou.koko.kook.model.signal.SignalEvent
 import me.mantou.koko.kook.model.signal.SignalType
 import me.mantou.koko.util.zlibDecompress
 import java.net.ConnectException
@@ -30,7 +32,9 @@ class KookWebSocketBridge : KookBridge {
     private lateinit var koKoBot: KoKoBot
 
     private var sn: Int = 0
-    private val mapper = jacksonObjectMapper()
+    private val mapper = jacksonObjectMapper {}.apply {
+        propertyNamingStrategy = PropertyNamingStrategies.SNAKE_CASE
+    }
     private val eventChannel = Channel<Event>(Channel.Factory.UNLIMITED)
     private var currentState: State = State.Init
 
@@ -38,8 +42,10 @@ class KookWebSocketBridge : KookBridge {
         this.koKoBot = koKoBot
 
         return scope.launch {
+            LOGGER.info { "[INIT] 初始化连接中..." }
             eventChannel.send(Event.GetGateway)
-            for (event in eventChannel){
+            for (event in eventChannel) {
+                LOGGER.debug { "[FSM] 收到事件 $event" }
                 handleConnectionEvent(event)
             }
         }
@@ -52,7 +58,7 @@ class KookWebSocketBridge : KookBridge {
                 if (event is Event.GetGateway) {
                     try {
                         val url = getWebSocketUrl()
-                        LOGGER.info { "成功获取Gateway url: $url" }
+                        LOGGER.debug { "[INIT] 成功获取Gateway url: $url" }
                         changeState(State.GotGateway)
                         eventChannel.send(Event.TryConnectGateway(url))
                     } catch (e: Exception) {
@@ -70,7 +76,7 @@ class KookWebSocketBridge : KookBridge {
                         // TODO 指数倒退 连接ws 最大重试两次
                     }
                 } else if (event is Event.ConnectSucceed) {
-                    LOGGER.info { "成功连接到Gateway..." }
+                    LOGGER.debug { "[INIT] 成功连接到Gateway..." }
                     changeState(State.ConnectedGateway)
                     eventChannel.send(Event.HandleSession(event.session, null))
                 }
@@ -84,8 +90,8 @@ class KookWebSocketBridge : KookBridge {
                             event.session.incoming.receive()
                         }
 
-                        if (frame == null){
-                            LOGGER.info { "[WS] Hello信号超时" }
+                        if (frame == null) {
+                            LOGGER.debug { "[WS] Hello信号超时" }
                             throw RuntimeException("Hello信号超时")
                         }
 
@@ -93,7 +99,7 @@ class KookWebSocketBridge : KookBridge {
                             val payload = mapper.convertValue(signal.payload, HelloPayload::class.java)
                             if (payload.code != 0) throw RuntimeException("握手包(HELLO)异常, code: ${payload.code}")
 
-                            LOGGER.info { "[WS] 成功收到Hello信号" }
+                            LOGGER.debug { "[WS] 成功收到Hello信号" }
                             eventChannel.send(Event.HelloSucceed(event.session, payload.sessionId))
                         }
 
@@ -111,6 +117,7 @@ class KookWebSocketBridge : KookBridge {
 
             is State.Connected -> {
                 if (event is Event.HandleSession) {
+                    LOGGER.info { "[WS] 连接成功..." }
                     scope.launch root@{
                         var waitingPong = false
                         var nextPingTime = 0L
@@ -131,7 +138,7 @@ class KookWebSocketBridge : KookBridge {
 
                                     waitingPong = true
 
-                                    LOGGER.info { "[WS] 发送Ping" }
+                                    LOGGER.debug { "[WS] 发送Ping" }
                                 }
 
                                 //查看pong是否超时
@@ -140,9 +147,9 @@ class KookWebSocketBridge : KookBridge {
                                         //修改下次ping的时间
                                         nextPingTime = System.currentTimeMillis() + 1000 * 2 * ++repingCount
                                         waitingPong = false
-                                        LOGGER.info { "[WS] 超时 $repingCount 次, 尝试Reping" }
+                                        LOGGER.debug { "[WS] 超时 $repingCount 次, 尝试Reping" }
                                     } else {
-                                        LOGGER.info { "[WS] 连接超时" }
+                                        LOGGER.debug { "[WS] 连接超时" }
                                         this@root.cancel()
                                     }
                                 }
@@ -150,15 +157,18 @@ class KookWebSocketBridge : KookBridge {
                         }
 
                         fun handleSignal(signal: Signal) {
-                            LOGGER.info { signal.extra?.toPrettyString() }
                             when (signal.type) {
                                 SignalType.PONG -> {
-                                    LOGGER.info { "[WS] 收到Pong" }
+                                    LOGGER.debug { "[WS] 收到Pong" }
                                     repingCount = 0
                                     waitingPong = false
                                 }
 
                                 SignalType.EVENT -> {
+                                    val signalEvent = mapper.convertValue(signal.payload, SignalEvent::class.java)
+                                    LOGGER.debug {
+                                        signalEvent
+                                    }
                                 }
 
                                 else -> {}
@@ -183,6 +193,7 @@ class KookWebSocketBridge : KookBridge {
     }
 
     private fun changeState(state: State) {
+        LOGGER.debug { "[FSM] 切换状态 $currentState -> $state" }
         currentState = state
 //        eventChannel.send(Event.EnterState)
     }

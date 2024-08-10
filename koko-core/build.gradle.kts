@@ -16,7 +16,7 @@ dependencies {
 
     // log
     implementation(libs.kotlinLoggingJVM)
-    implementation(libs.slf4jImpl)
+    implementation(libs.logback)
 
     // ktor
     implementation(libs.ktorClientCore)
